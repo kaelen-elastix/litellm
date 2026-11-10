@@ -438,6 +438,7 @@ def test_settings_as_dict_lists_the_runtime_updatable_settings(make_core: MakeCo
         "enable_tag_filtering",
         "tag_routing_prefix",
         "fallback_on_unsupported_params",
+        "fallback_policy",
         "routing_groups",
     }
     assert (settings["routing_strategy"], settings["num_retries"], settings["cooldown_time"]) == (

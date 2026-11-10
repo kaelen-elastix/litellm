@@ -5,8 +5,8 @@ use std::{collections::BTreeMap, sync::Arc, time::Duration};
 
 use crate::{
     config::{
-        AllowedFailsPolicy, DEFAULT_COOLDOWN_TIME, PluginSpec, RetryPolicy, RouterConfig,
-        RouterDynamicConfig, RoutingStrategy,
+        AllowedFailsPolicy, DEFAULT_COOLDOWN_TIME, FallbackPolicy, PluginSpec, RetryPolicy,
+        RouterConfig, RouterDynamicConfig, RoutingStrategy,
     },
     error::AttemptError,
 };
@@ -34,6 +34,7 @@ pub struct Settings {
     pub background_health_check_model_groups: Option<Arc<[String]>>,
     pub enable_weighted_failover: bool,
     pub fallback_on_unsupported_params: bool,
+    pub fallback_policy: FallbackPolicy,
     pub provider_default_deployment_ids: Arc<[String]>,
     pub dynamic: Arc<RouterDynamicConfig>,
 }
@@ -74,6 +75,7 @@ impl Settings {
                 .map(Into::into),
             enable_weighted_failover: config.enable_weighted_failover,
             fallback_on_unsupported_params: config.fallback_on_unsupported_params.unwrap_or(true),
+            fallback_policy: config.fallback_policy.clone(),
             provider_default_deployment_ids: config.provider_default_deployment_ids.clone().into(),
             dynamic,
         }

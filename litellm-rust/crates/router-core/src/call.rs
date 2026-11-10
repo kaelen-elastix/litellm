@@ -155,6 +155,16 @@ impl<'a> Lists<'a> {
         }
     }
 
+    /// `fallback_policy`: a blocked failure keeps only the fallbacks within its own group.
+    fn within_group(self) -> Self {
+        Self {
+            fallbacks: None,
+            context_window: None,
+            content_policy: None,
+            ..self
+        }
+    }
+
     fn has_regular(&self) -> bool {
         self.fallbacks.is_some_and(|list| !list.is_empty())
     }
@@ -759,6 +769,14 @@ impl Core {
         let failure = retried_failure(error);
         let is_a = |name: &str| failure.as_ref().is_some_and(|f| f.is_a(name));
         let lists = Lists::of(snapshot, request);
+        let lists = if failure
+            .as_ref()
+            .is_some_and(|f| snapshot.settings.fallback_policy.blocks_other_groups(f))
+        {
+            lists.within_group()
+        } else {
+            lists
+        };
         // `fallback_lookup_groups`: the group a pre-routing hook selected, the group being served,
         // then the group the request was for.
         let mut lookup: Vec<&str> = routed.into_iter().collect();

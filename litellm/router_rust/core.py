@@ -363,6 +363,7 @@ _SERVED_ARGUMENTS: Final = frozenset(
         "background_health_check_model_groups",
         "enable_weighted_failover",
         "fallback_on_unsupported_params",
+        "fallback_policy",
         # Built host-side as CustomLogger checks (litellm/router_rust/steps/callbacks.py); router-core runs
         # their deployment filters through its callback_filters stage.
         "optional_pre_call_checks",

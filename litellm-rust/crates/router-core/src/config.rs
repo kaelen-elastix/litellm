@@ -2,7 +2,10 @@
 //! [`RouterDynamicConfig`], a versioned snapshot read once per call. The router never reads
 //! process globals.
 
-use std::{collections::BTreeMap, time::Duration};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    time::Duration,
+};
 
 use serde::Deserialize;
 
@@ -174,6 +177,28 @@ impl AllowedFailsPolicy {
     }
 }
 
+/// `FallbackPolicy` in `litellm/types/router.py`: the failures that never fall back to another
+/// model group. Fallbacks within the failed group (its order levels, weighted failover) still run.
+#[derive(Clone, Debug, Default, PartialEq, Deserialize)]
+#[serde(default)]
+pub struct FallbackPolicy {
+    pub disabled_status_codes: BTreeSet<u16>,
+}
+
+impl FallbackPolicy {
+    /// The status the client sees: a router rate limit (every deployment cooling down) carries
+    /// none in the core but reaches the client as Python's 429.
+    pub fn blocks_other_groups(&self, failure: &AttemptError) -> bool {
+        let status = failure.status.or_else(|| {
+            ["RouterRateLimitError", "RouterRateLimitErrorBasic"]
+                .iter()
+                .any(|class| failure.is_a(class))
+                .then_some(429)
+        });
+        status.is_some_and(|status| self.disabled_status_codes.contains(&status))
+    }
+}
+
 pub use crate::fallback::{FallbackKeys, Fallbacks};
 
 /// Static config, fixed for the router's life.
@@ -217,6 +242,7 @@ pub struct RouterConfig {
     pub enable_weighted_failover: bool,
     /// `fallback_on_unsupported_params`; `None` is Python's default, `True`.
     pub fallback_on_unsupported_params: Option<bool>,
+    pub fallback_policy: FallbackPolicy,
     /// Deployment ids that are a provider's default and never cool down
     /// (`provider_default_deployment_ids`).
     pub provider_default_deployment_ids: Vec<String>,
@@ -340,6 +366,27 @@ mod tests {
             dynamic.model_alias_map,
             BTreeMap::from([("gpt".to_owned(), "gpt-4".to_owned())])
         );
+    }
+
+    fn failure(status: Option<u16>, classes: &[&str]) -> AttemptError {
+        let mut failure = AttemptError::new(crate::error::FailureKind::Other, status);
+        failure.classes = classes.iter().map(|class| (*class).into()).collect();
+        failure
+    }
+
+    #[rstest]
+    #[case::listed_status(failure(Some(429), &["RateLimitError"]), true)]
+    #[case::unlisted_status(failure(Some(500), &["InternalServerError"]), false)]
+    #[case::router_rate_limit(failure(None, &["RouterRateLimitError", "ValueError"]), true)]
+    #[case::router_rate_limit_basic(failure(None, &["RouterRateLimitErrorBasic", "ValueError"]), true)]
+    #[case::no_status(failure(None, &["ValueError"]), false)]
+    fn fallback_policy_blocks_the_status_the_client_sees(
+        #[case] failure: AttemptError,
+        #[case] blocked: bool,
+    ) {
+        let policy: FallbackPolicy =
+            serde_json::from_value(json!({"disabled_status_codes": [429]})).unwrap();
+        assert_eq!(policy.blocks_other_groups(&failure), blocked);
     }
 
     #[rstest]

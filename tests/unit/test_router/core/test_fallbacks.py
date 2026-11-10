@@ -9,6 +9,7 @@ import litellm
 from litellm.exceptions import BlockedPiiEntityError, GuardrailRaisedException
 from litellm.router_api import ChangeSet
 from litellm.router_core import RouterCore
+from litellm.types.router import RouterRateLimitError
 from litellm.types.utils import Usage
 from tests.unit.test_router.core.construction_precall_helpers import windowed
 from tests.unit.test_router.core.scripted_host import (
@@ -738,6 +739,119 @@ async def test_errors_outside_the_unsupported_params_rule_fall_back(
     await complete(core)
 
     assert host.deployments_called("acompletion") == ["a", "b"]
+
+
+# --- fallback_policy ------------------------------------------------------------------------------
+
+NO_FALLBACK_ON_429: Final = {"disabled_status_codes": [429]}
+NO_FALLBACK_ON_400: Final = {"disabled_status_codes": [400]}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error", "policy", "constructor", "client_side"),
+    [
+        (rate_limit, NO_FALLBACK_ON_429, {"fallbacks": [{"a": ["b"]}]}, None),
+        (rate_limit, NO_FALLBACK_ON_429, {"default_fallbacks": ["b"]}, None),
+        (rate_limit, NO_FALLBACK_ON_429, {}, ["b"]),
+        (context_window, NO_FALLBACK_ON_400, {"context_window_fallbacks": [{"a": ["b"]}]}, None),
+        (content_policy, NO_FALLBACK_ON_400, {"content_policy_fallbacks": [{"a": ["b"]}]}, None),
+    ],
+    ids=["fallbacks", "default-fallbacks", "client-side-fallbacks", "context-window", "content-policy"],
+)
+async def test_a_status_the_fallback_policy_disables_raises_without_trying_another_group(
+    make_core: MakeCore,
+    host: ScriptedHost,
+    error: Callable[[], Exception],
+    policy: dict[str, object],
+    constructor: dict[str, object],
+    client_side: list[str] | None,
+) -> None:
+    core: Final = build(make_core, fallback_policy=policy, **constructor)
+    host.answer("openai/a", error())
+
+    with pytest.raises(type(error())):
+        await (complete(core) if client_side is None else complete(core, fallbacks=client_side))
+
+    assert host.deployments_called("acompletion") == ["a"]
+
+
+@pytest.mark.asyncio
+async def test_a_status_the_fallback_policy_leaves_out_still_falls_back(
+    make_core: MakeCore, host: ScriptedHost
+) -> None:
+    core: Final = build(make_core, fallbacks=[{"a": ["b"]}], fallback_policy=NO_FALLBACK_ON_429)
+    host.answer("openai/a", server_error())
+
+    response: Final = await complete(core)
+
+    assert host.deployments_called("acompletion") == ["a", "b"]
+    assert headers(response)["x-litellm-model-group"] == "b"
+
+
+@pytest.mark.asyncio
+async def test_the_fallback_policy_keeps_the_failed_groups_order_tiers(make_core: MakeCore, host: ScriptedHost) -> None:
+    core: Final = build(make_core, model_list=TIERED_A, fallbacks=[{"a": ["b"]}], fallback_policy=NO_FALLBACK_ON_429)
+    host.answer("openai/a1", rate_limit())
+    host.answer("openai/a2", rate_limit())
+
+    with pytest.raises(litellm.RateLimitError):
+        await complete(core)
+
+    assert host.deployments_called("acompletion") == ["a1", "a2"]
+
+
+@pytest.mark.asyncio
+async def test_the_fallback_policy_keeps_weighted_failover_within_the_group(
+    make_core: MakeCore, host: ScriptedHost
+) -> None:
+    core: Final = build(
+        make_core,
+        model_list=[deployment("a", "a1"), deployment("a", "a2"), deployment("b", "b")],
+        enable_weighted_failover=True,
+        fallbacks=[{"a": ["b"]}],
+        fallback_policy=NO_FALLBACK_ON_429,
+    )
+    host.answer("*", rate_limit())
+
+    with pytest.raises(litellm.RateLimitError):
+        await complete(core)
+
+    assert sorted(host.deployments_called("acompletion"), key=str) == ["a1", "a2"]
+
+
+@pytest.mark.asyncio
+async def test_a_group_cooled_down_by_a_disabled_status_does_not_fall_back(
+    make_core: MakeCore, host: ScriptedHost
+) -> None:
+    core: Final = build(
+        make_core,
+        model_list=[deployment("a", "a1"), deployment("a", "a2"), deployment("b", "b")],
+        fallbacks=[{"a": ["b"]}],
+        fallback_policy=NO_FALLBACK_ON_429,
+    )
+    host.answer("openai/a1", rate_limit())
+    host.answer("openai/a2", rate_limit())
+    for _ in range(2):
+        with pytest.raises(litellm.RateLimitError):
+            await complete(core)
+
+    with pytest.raises(RouterRateLimitError):
+        await complete(core)
+
+    assert "b" not in host.deployments_called("acompletion")
+
+
+@pytest.mark.asyncio
+async def test_a_fallback_policy_applied_by_changeset_takes_effect(make_core: MakeCore, host: ScriptedHost) -> None:
+    core: Final = build(make_core, fallbacks=[{"a": ["b"]}])
+    core.apply(ChangeSet(settings={"fallback_policy": NO_FALLBACK_ON_429}))
+    host.answer("openai/a", rate_limit())
+
+    with pytest.raises(litellm.RateLimitError):
+        await complete(core)
+
+    assert host.deployments_called("acompletion") == ["a"]
 
 
 # --- the error when every group fails --------------------------------------------------------------

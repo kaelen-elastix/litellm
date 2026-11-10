@@ -255,6 +255,7 @@ ROUTER_INIT_ARGS: Final[tuple[str, ...]] = (
     "cooldown_time",
     "disable_cooldowns",
     "fallback_on_unsupported_params",
+    "fallback_policy",
     "routing_strategy",
     "optional_pre_call_checks",
     "routing_strategy_args",

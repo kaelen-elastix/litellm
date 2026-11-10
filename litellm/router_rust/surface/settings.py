@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING, Final
 from litellm._logging import verbose_router_logger
 from litellm.constants import RUNTIME_UPDATABLE_ROUTER_SETTINGS
 from litellm.litellm_core_utils.routing_groups import validate_routing_strategy
+from litellm.router_rust.surface.health_routing import resolved_fallback_policy
 from litellm.types.router import RetryPolicy, RoutingStrategy
 
 if TYPE_CHECKING:
@@ -37,6 +38,7 @@ PLAIN_DEFAULTS: Final[Mapping[str, object]] = MappingProxyType(
         "model_group_retry_policy": {},
         "enable_weighted_failover": False,
         "fallback_on_unsupported_params": True,
+        "fallback_policy": None,
     }
 )
 # `get_settings`: the settings it lists, in its order (`routing_groups` comes last).
@@ -59,6 +61,7 @@ _VIEW_ORDER: Final = (
     "enable_tag_filtering",
     "tag_routing_prefix",
     "fallback_on_unsupported_params",
+    "fallback_policy",
 )
 
 # Router attributes that are their constructor argument as given, else this default. Arguments
@@ -126,6 +129,8 @@ def read_settings_update(settings: Mapping[str, object], routing_strategy: objec
                 policy = RetryPolicy.model_validate(value) if isinstance(value, dict) else value
                 if policy is None or isinstance(policy, RetryPolicy):
                     plain[name] = policy
+            elif name == "fallback_policy":
+                plain[name] = resolved_fallback_policy(value)
             elif name in PLAIN_DEFAULTS or name == "max_retries":
                 plain[name] = value
             else:
@@ -156,6 +161,7 @@ def initial_plain(config: "RouterConfig") -> dict[str, object]:  # mutable-ok: t
 
     plain: Final = {name: config.get(name, default) for name, default in PLAIN_DEFAULTS.items()}
     plain["retry_policy"] = resolved_retry_policy(plain["retry_policy"])
+    plain["fallback_policy"] = resolved_fallback_policy(plain["fallback_policy"])
     return plain
 
 

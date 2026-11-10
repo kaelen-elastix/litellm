@@ -191,6 +191,18 @@ class RetryPolicy(LiteLLMBaseModel):
     DefaultRetries: int | None = None
 
 
+class FallbackPolicy(LiteLLMBaseModel):
+    """
+    Status codes that never fall back to another model group (`fallbacks`, `context_window_fallbacks`,
+    `content_policy_fallbacks` and client-side fallbacks). The failed group's own order levels and
+    weighted failover still run.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    disabled_status_codes: frozenset[Annotated[int, Field(ge=100, le=599)]] = frozenset()
+
+
 OptionalPreCallChecks = list[
     Literal[
         "prompt_caching",
@@ -236,6 +248,7 @@ class UpdateRouterConfig(LiteLLMBaseModel):
     tag_routing_prefix: str | None = None
     optional_pre_call_checks: OptionalPreCallChecks | None = None
     fallback_on_unsupported_params: bool | None = None
+    fallback_policy: FallbackPolicy | None = None
 
     model_config = ConfigDict(protected_namespaces=())
 

@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Final
 
 from litellm.litellm_core_utils.core_helpers import as_str_mapping
 from litellm.router_utils.health_state_cache import DeploymentHealthCache
-from litellm.types.router import AllowedFailsPolicy
+from litellm.types.router import AllowedFailsPolicy, FallbackPolicy
 
 if TYPE_CHECKING:
     from litellm.caching.caching import DualCache
@@ -34,6 +34,16 @@ def resolved_allowed_fails_policy(value: object) -> AllowedFailsPolicy | None:
         return value
     if isinstance(value, dict):
         return AllowedFailsPolicy.model_validate(value)
+    return None
+
+
+def resolved_fallback_policy(value: object) -> FallbackPolicy | None:
+    """A dict is read into a ``FallbackPolicy`` (a bad field raises the model's own error), a policy
+    is kept, anything else is no policy."""
+    if isinstance(value, FallbackPolicy):
+        return value
+    if isinstance(value, dict):
+        return FallbackPolicy.model_validate(value)
     return None
 
 
@@ -85,6 +95,9 @@ def failover_document(plain: Mapping[str, object]) -> Mapping[str, object]:
     return {
         "enable_weighted_failover": True if plain.get("enable_weighted_failover") else None,
         "fallback_on_unsupported_params": False if not plain.get("fallback_on_unsupported_params", True) else None,
+        "fallback_policy": {"disabled_status_codes": sorted(policy.disabled_status_codes)}
+        if isinstance(policy := plain.get("fallback_policy"), FallbackPolicy)
+        else None,
     }
 
 
@@ -157,4 +170,5 @@ __all__ = [
     "fully_unhealthy_model_names",
     "is_blocked",
     "resolved_allowed_fails_policy",
+    "resolved_fallback_policy",
 ]

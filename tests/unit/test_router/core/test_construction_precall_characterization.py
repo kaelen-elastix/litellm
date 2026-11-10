@@ -129,6 +129,7 @@ def test_settings_as_dict_of_a_default_router(make_core: MakeCore) -> None:
         "enable_tag_filtering": False,
         "tag_routing_prefix": "",
         "fallback_on_unsupported_params": True,
+        "fallback_policy": None,
         "routing_groups": [],
     }
 

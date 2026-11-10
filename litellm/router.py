@@ -34,6 +34,7 @@ from litellm.types.router import (
     DeploymentTypedDict,
     FallbackAccessCheck,
     FallbackBudgetCheck,
+    FallbackPolicy,
     GuardrailTypedDict,
     LiteLLM_Params,
     ModelGroupInfo,
@@ -102,6 +103,7 @@ def _router_init(
     cooldown_time: float | None = None,  # (seconds) time to cooldown a deployment after failure
     disable_cooldowns: bool | None = None,
     fallback_on_unsupported_params: bool = True,
+    fallback_policy: FallbackPolicy | dict[str, object] | None = None,
     routing_strategy: RoutingStrategyName = "simple-shuffle",
     optional_pre_call_checks: OptionalPreCallChecks | None = None,
     routing_strategy_args: dict = {},  # just for latency-based
@@ -166,6 +168,7 @@ def _router_init(
         enable_mid_stream_fallback_continuation (bool): When True, a chat-completions stream that breaks after plain assistant text has been delivered continues on a fallback deployment via assistant prefill instead of surfacing the error. Only deployments whose model supports assistant prefill are eligible, so the partial text is continued, not regenerated; if none is, the original error is surfaced. Streams that emitted tool calls, thinking blocks, audio/images, or constrained (JSON / forced tool_choice) output are never continued. Async-only. Defaults to False.
         fallback_access_check (Optional[FallbackAccessCheck]): Awaited before each cross-model-group fallback attempt on the async path; a fallback target it rejects is skipped. Defaults to None (every configured fallback is attempted).
         fallback_budget_check (Optional[FallbackBudgetCheck]): Awaited before each cross-model-group fallback attempt on the async path; a fallback target it rejects as over budget is skipped. Defaults to None (budget is not re-checked on fallback).
+        fallback_policy (Optional[FallbackPolicy]): `disabled_status_codes` lists the status codes (e.g. 429) that raise instead of falling back to another model group. The failed group's own order levels and weighted failover still run. Defaults to None (every status code may fall back).
     Returns:
         Router: An instance of the litellm.Router class.
 
