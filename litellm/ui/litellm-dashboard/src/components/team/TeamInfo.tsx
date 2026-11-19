@@ -397,6 +397,7 @@ const buildTeamUpdateFieldsSchema = (t: TFunction) =>
     budget_duration: z.string().nullish(),
     tpm_limit: numericInputSchema,
     rpm_limit: numericInputSchema,
+    max_parallel_requests: numericInputSchema,
     tpd_limit: numericInputSchema,
     modelLimits: z
       .array(
@@ -490,6 +491,7 @@ const EMPTY_TEAM_UPDATE_VALUES: TeamUpdateFormValues = {
   budget_duration: undefined,
   tpm_limit: undefined,
   rpm_limit: undefined,
+  max_parallel_requests: undefined,
   tpd_limit: undefined,
   modelLimits: [],
   default_estimated_output_tokens: undefined,
@@ -544,6 +546,7 @@ const toTeamFormValues = (info: TeamInfoRecord, effectiveGuardrails: string[]): 
   budget_duration: info.budget_duration,
   tpm_limit: info.tpm_limit,
   rpm_limit: info.rpm_limit,
+  max_parallel_requests: info.max_parallel_requests,
   tpd_limit: info.tpd_limit,
   modelLimits: Array.from(
     new Set([
@@ -1086,6 +1089,7 @@ const TeamInfoView: React.FC<TeamInfoProps> = ({
         ...(form.getFieldState("models").isDirty ? { models: normalizeTeamModelSelection(values.models) } : {}),
         tpm_limit: numberOrNull(values.tpm_limit),
         rpm_limit: numberOrNull(values.rpm_limit),
+        max_parallel_requests: numberOrNull(values.max_parallel_requests),
         tpd_limit: numberOrNull(values.tpd_limit),
         model_tpm_limit: modelTpmLimit,
         model_rpm_limit: modelRpmLimit,
@@ -1451,7 +1455,7 @@ const TeamInfoView: React.FC<TeamInfoProps> = ({
                 {t("teams.teamInfo.rateLimits.tpd")}
                 {info.tpd_limit ?? t("teams.teamInfo.rateLimits.unlimited")}
               </p>
-              {info.max_parallel_requests && (
+              {info.max_parallel_requests != null && (
                 <p>
                   {t("teams.teamInfo.overview.maxParallelRequests")}
                   {info.max_parallel_requests}
@@ -1916,6 +1920,17 @@ const TeamInfoView: React.FC<TeamInfoProps> = ({
                   </FormField>
 
                   <FormField control={form.control} name="rpm_limit" label={t("teams.teamInfo.editForm.rpmLimit")}>
+                    {({ ref, value, ...field }) => <NumericalInput {...field} ref={ref} value={value ?? ""} step={1} />}
+                  </FormField>
+
+                  <FormField
+                    control={form.control}
+                    name="max_parallel_requests"
+                    label={labelWithHint(
+                      t("teams.teamInfo.editForm.maxParallelRequests"),
+                      t("teams.teamInfo.editForm.maxParallelRequestsHint"),
+                    )}
+                  >
                     {({ ref, value, ...field }) => <NumericalInput {...field} ref={ref} value={value ?? ""} step={1} />}
                   </FormField>
 
