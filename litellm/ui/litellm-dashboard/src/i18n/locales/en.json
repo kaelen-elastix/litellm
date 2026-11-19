@@ -16896,6 +16896,8 @@
         "perModelBudgetHint": "Cap this team's spend on individual models, each with its own reset window. Every key on the team shares the cap unless the key sets its own budget for that model.",
         "tpmLimit": "Tokens per minute Limit (TPM)",
         "rpmLimit": "Requests per minute Limit (RPM)",
+        "maxParallelRequests": "Max Parallel Requests",
+        "maxParallelRequestsHint": "Most requests this team can have in flight at once, shared by every key on the team. A request over the limit gets a 429. Leave blank for no limit.",
         "tpdLimit": "Tokens per day Limit (TPD)",
         "tpdLimitHint": "Daily token budget for batch submissions (/v1/batches). When set, batch input files are charged against this 24h window instead of the team's TPM/RPM limits. Online requests keep using TPM/RPM.",
         "metadata": "Metadata",
@@ -17357,6 +17359,10 @@
           "modelMaxBudgetHint": "Cap this team's spend on individual models, each with its own reset window. Every key on the team shares the cap unless the key sets its own budget for that model.",
           "tpmLimit": "Tokens per minute Limit (TPM)",
           "rpmLimit": "Requests per minute Limit (RPM)",
+          "maxParallelRequests": {
+            "label": "Max Parallel Requests",
+            "hint": "Most requests this team can have in flight at once, shared by every key on the team. A request over the limit gets a 429. Leave blank for no limit."
+          },
           "tpdLimit": {
             "label": "Tokens per day Limit (TPD)",
             "hint": "Daily token budget for batch submissions (/v1/batches). When set, batch input files are charged against this 24h window instead of the team's TPM/RPM limits. Online requests keep using TPM/RPM."
