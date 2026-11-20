@@ -3800,6 +3800,7 @@ dependencies = [
  "litellm-python-compat",
  "litellm-redis-client",
  "litellm-redis-store",
+ "litellm-redis-testing",
  "rstest",
  "serde",
  "serde_json",
@@ -4839,6 +4840,7 @@ name = "litellm-repositories"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "jiff",
  "litellm-db",
  "litellm-error",
  "litellm-python-compat",
@@ -4849,6 +4851,7 @@ dependencies = [
  "sqlx",
  "tokio",
  "tracing",
+ "uuid",
  "veil",
 ]
 

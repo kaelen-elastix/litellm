@@ -2342,6 +2342,7 @@ def _team_obj_from_token(valid_token: UserAPIKeyAuth) -> LiteLLM_TeamRebuiltFrom
         spend=valid_token.team_spend,
         tpm_limit=valid_token.team_tpm_limit,
         rpm_limit=valid_token.team_rpm_limit,
+        max_parallel_requests=valid_token.team_max_parallel_requests,
         tpd_limit=valid_token.team_tpd_limit,
         blocked=valid_token.team_blocked,
         models=token_team_models,
@@ -3080,6 +3081,7 @@ async def _reserve_budget_after_common_checks(
             ),
             raw_body=await read_raw_json_body(request=request),
             path_params=reservation_path_params,
+            request=request,
         )
     if request is not None:
         reservation: Final = user_api_key_auth_obj.budget_reservation

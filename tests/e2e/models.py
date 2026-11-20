@@ -59,6 +59,9 @@ class KeyMetadata(BaseModel):
     batch_enqueued_token_limit: int | None = None
     tag: str | None = None
     guardrails: list[str] | None = None
+    webhook_token: str | None = None
+    apiKey: str | None = None
+    OpenAIAPIKey: str | None = None
 
 
 class ObjectPermission(BaseModel):
@@ -1608,6 +1611,7 @@ class TeamNewBody(BaseModel):
     organization_id: str | None = None
     metadata: TeamMetadata | None = None
     model_aliases: dict[str, str] | None = None
+    max_parallel_requests: int | None = None
 
 
 class TeamNewResponse(BaseModel):
@@ -1629,6 +1633,7 @@ class TeamData(BaseModel):
     organization_id: str | None = None
     team_alias: str | None = None
     models: list[str] = []
+    max_parallel_requests: int | None = None
     members_with_roles: list[TeamMemberEntry] = []
 
 
@@ -1687,6 +1692,7 @@ class UserNewBody(BaseModel):
     user_id: str | None = None
     auto_create_key: bool | None = None
     max_budget: float | None = None
+    metadata: dict[str, str] | None = None
 
 
 class UserNewResponse(BaseModel):
